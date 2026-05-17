@@ -16,6 +16,7 @@ jobs:
     outputs:
       new_release: ${{ steps.check.outputs.new_release }}
       version: ${{ steps.check.outputs.version }}
+      semver: ${{ steps.check.outputs.semver }}
     steps:
       - name: Check latest agentmemory release
         id: check
@@ -32,6 +33,7 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] || [ "$LATEST_TAG" != "$MY_LATEST" ]; then
             echo "new_release=true" >> $GITHUB_OUTPUT
             echo "version=$LATEST_TAG" >> $GITHUB_OUTPUT
+            echo "semver=${LATEST_TAG#v}" >> $GITHUB_OUTPUT
           else
             echo "new_release=false" >> $GITHUB_OUTPUT
           fi
@@ -61,8 +63,10 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: deploy/railway
           push: true
+          build-args: |
+            AGENTMEMORY_VERSION=${{ needs.check-version.outputs.semver }}
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/agentmemory:latest
             ${{ secrets.DOCKERHUB_USERNAME }}/agentmemory:${{ needs.check-version.outputs.version }}
