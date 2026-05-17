@@ -60,15 +60,25 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Patch viewer port for external access
+        run: |
+          sed -i 's/openssl ca-certificates tini gosu curl/openssl ca-certificates tini gosu curl socat/' deploy/railway/Dockerfile
+          sed -i 's|exec gosu|socat TCP-LISTEN:3114,fork,bind=0.0.0.0 TCP:127.0.0.1:3113 \&\nexec gosu|' deploy/railway/entrypoint.sh
+
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: deploy/railway
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           build-args: |
             AGENTMEMORY_VERSION=${{ needs.check-version.outputs.semver }}
+            III_VERSION=0.11.2
+            III_SDK_VERSION=0.11.2
           tags: |
             ${{ secrets.DOCKERHUB_USERNAME }}/agentmemory:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/agentmemory:${{ needs.check-version.outputs.semver }}
             ${{ secrets.DOCKERHUB_USERNAME }}/agentmemory:${{ needs.check-version.outputs.version }}
 
       - name: Delete existing release (manual trigger only)
